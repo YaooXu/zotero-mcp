@@ -94,21 +94,17 @@ def get_item_metadata(
     description=(
         "Return the full extracted text of a Zotero item's primary "
         "attachment (PDF or EPUB). "
-        "WARNING: returns the entire paper (often 10K+ tokens). Use ONLY "
-        "when the user explicitly wants to READ the paper — not for "
-        "searching or browsing. For topic search use "
-        "zotero_semantic_search; for metadata only use "
-        "zotero_get_item_metadata. "
-        "Avoid calling this on multiple papers in one conversation unless "
-        "the user specifically asked to read several. "
+        "WARNING: This tool relies on Zotero's fulltext index cache, which "
+        "may return WRONG content (e.g., HTML snapshot text instead of PDF "
+        "content) when the item has multiple attachments. "
+        "PREFER using zotero_get_attachment_path to get the local PDF path, "
+        "then read the PDF directly with your file-reading capability — "
+        "this approach is more reliable and also supports images/figures. "
+        "Only use this tool as a fallback when local file access is not "
+        "available. "
         "item_key: 8-character Zotero item key (parent item, not the "
         "attachment). The tool locates the attached PDF/EPUB itself. "
         "Scope: active library only. "
-        "Extraction path (in order): local Zotero storage via SQLite when "
-        "running in local mode (fastest, respects pdf_max_pages config); "
-        "Zotero's server-side fulltext index; direct download + PyMuPDF "
-        "parsing as a last resort. Image-only scanned PDFs without OCR "
-        "may return little or no text. "
         "Example: zotero_get_item_fulltext(item_key='RTKZQI8E')."
     )
 )
@@ -248,9 +244,14 @@ def get_item_fulltext(
     name="zotero_get_attachment_path",
     description=(
         "Return the local filesystem path(s) of a Zotero item's attachments. "
-        "Local mode only. Useful when you want to read a large PDF directly "
-        "(e.g., a book) instead of going through zotero_get_item_fulltext, "
-        "which is page-limited."
+        "Local mode only. RECOMMENDED approach for reading papers: use this "
+        "tool to get the local PDF path, then read the PDF directly with "
+        "your file-reading capability (e.g., Read tool) — this supports "
+        "both text AND images/figures, unlike zotero_get_item_fulltext or "
+        "zotero_read_pdf_pages which are text-only. "
+        "Workflow: (1) zotero_search_items to find item_key, "
+        "(2) zotero_get_attachment_path to get local PDF path, "
+        "(3) read the PDF file directly."
     )
 )
 def get_attachment_path(

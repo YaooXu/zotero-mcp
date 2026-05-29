@@ -89,8 +89,12 @@ def _get_pdf_path(item_key: str, ctx: Context) -> tuple[str, str] | None:
 @mcp.tool(
     name="zotero_read_pdf_pages",
     description="Read specific page range(s) from a PDF attachment of a Zotero item. "
-    "Use this when you know which pages to read — for example after getting the PDF "
-    "outline via zotero_get_pdf_outline. Pages are 1-indexed. "
+    "Extracts TEXT only — does NOT support images or figures. "
+    "For reading papers with image support, prefer using "
+    "zotero_get_attachment_path to get the local PDF path, then read "
+    "the file directly. Use this tool only when you need pure text "
+    "extraction or when local file access is not available. "
+    "Pages are 1-indexed. "
     "Requires PyMuPDF: pip install zotero-mcp-server[pdf]",
 )
 def read_pdf_pages(

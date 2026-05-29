@@ -908,8 +908,9 @@ def search_notes(
 @mcp.tool(
     name="zotero_create_note",
     description=(
-        "Create a new child note attached to a Zotero item. "
+        "Create a new note, optionally attached to a Zotero item. "
         "item_key: parent item key (the note becomes a child of this item). "
+        "If omitted or None, creates a standalone note not attached to any item. "
         "note_title: title displayed in Zotero's note pane. "
         "note_text: note body; simple HTML is preserved (p, strong, em, "
         "ul/ol/li, a, blockquote, code). "
@@ -923,18 +924,18 @@ def search_notes(
 )
 @with_zotero_api_lock
 def create_note(
-    item_key: str,
-    note_title: str,
-    note_text: str,
+    item_key: str | None = None,
+    note_title: str = "",
+    note_text: str = "",
     tags: list[str] | str | None = None,
     *,
     ctx: Context
 ) -> str:
     """
-    Create a new note for a Zotero item.
+    Create a new note, optionally attached to a Zotero item.
 
     Args:
-        item_key: Zotero item key/ID to attach the note to
+        item_key: Zotero item key/ID to attach the note to. If None, creates a standalone note.
         note_title: Title for the note
         note_text: Content of the note (can include simple HTML formatting)
         tags: List of tags to apply to the note
@@ -944,17 +945,19 @@ def create_note(
         Confirmation message with the new note key
     """
     try:
-        ctx.info(f"Creating note for item {item_key}")
+        ctx.info(f"Creating note" + (f" for item {item_key}" if item_key else " (standalone)"))
         # Normalize tags (LLMs often pass JSON strings instead of lists)
         tags = _helpers._normalize_str_list_input(tags, "tags") if tags is not None else []
         zot = _client.get_zotero_client()
 
-        # First verify the parent item exists
-        try:
-            parent = zot.item(item_key)
-            parent_title = parent["data"].get("title", "Untitled Item")
-        except Exception:
-            return f"Error: No item found with key: {item_key}"
+        # Verify the parent item exists (if provided)
+        parent_title = None
+        if item_key:
+            try:
+                parent = zot.item(item_key)
+                parent_title = parent["data"].get("title", "Untitled Item")
+            except Exception:
+                return f"Error: No item found with key: {item_key}"
 
         # Format the note content with proper HTML
         # If the note_text already has HTML, use it directly
@@ -983,10 +986,11 @@ def create_note(
         # Prepare the note data
         note_data = {
             "itemType": "note",
-            "parentItem": item_key,
             "note": html_content,
             "tags": [{"tag": tag} for tag in (tags or [])]
         }
+        if item_key:
+            note_data["parentItem"] = item_key
 
         # In local mode, the local API does not support POST to create items,
         # and the connector/saveItems endpoint ignores parentItem (creating
@@ -1002,7 +1006,10 @@ def create_note(
                     successful = result["success"]
                     if len(successful) > 0:
                         note_key = next(iter(successful.values()))
-                        return f"Successfully created note for \"{parent_title}\"\n\nNote key: {note_key}"
+                        if parent_title:
+                            return f"Successfully created note for \"{parent_title}\"\n\nNote key: {note_key}"
+                        else:
+                            return f"Successfully created standalone note\n\nNote key: {note_key}"
                     else:
                         return f"Note creation response was successful but no key was returned: {result}"
                 else:
